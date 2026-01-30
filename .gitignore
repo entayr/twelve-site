@@ -34,3 +34,6 @@ strapi/**/*.sqlite-journal
 
 # generic env
 .env
+
+# backups
+*.bak
