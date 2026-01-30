@@ -1,0 +1,36 @@
+# macOS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# node
+node_modules/
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+# Strapi build/cache
+strapi/.cache/
+strapi/build/
+strapi/dist/
+strapi/.tmp/
+strapi/.strapi/
+strapi/.strapi-updater.json
+
+# Strapi secrets + local db
+strapi/.env
+strapi/database/
+strapi/*.sqlite
+strapi/**/*.sqlite
+strapi/**/*.sqlite-journal
+
+# generic env
+.env

@@ -1,0 +1,35 @@
+{
+  "kind": "singleType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "company_name": {
+      "type": "string",
+      "required": true
+    },
+    "company_description": {
+      "type": "blocks",
+      "required": true
+    },
+    "contacts_email": {
+      "type": "string",
+      "required": true
+    },
+    "contacts_phone": {
+      "type": "string",
+      "required": true
+    },
+    "contacts_address": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
