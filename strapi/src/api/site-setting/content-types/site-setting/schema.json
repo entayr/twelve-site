@@ -1,0 +1,30 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_settings",
+  "info": {
+    "singularName": "site-setting",
+    "pluralName": "site-settings",
+    "displayName": "Site setting"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "headerMenu": {
+      "type": "component",
+      "component": "shared.header-menu",
+      "repeatable": true
+    },
+    "headerCtaPrimary": {
+      "type": "component",
+      "component": "shared.menu-item",
+      "repeatable": false
+    },
+    "headerCtaSecondary": {
+      "type": "component",
+      "component": "shared.menu-item",
+      "repeatable": false
+    }
+  }
+}
