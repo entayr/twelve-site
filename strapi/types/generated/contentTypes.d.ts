@@ -481,6 +481,15 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::page.page'> &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    sections: Schema.Attribute.DynamicZone<
+      [
+        'shared.sections-hero',
+        'shared.sections-rich-text',
+        'shared.sections-features',
+        'shared.sections-cta',
+        'shared.sections-map',
+      ]
+    >;
     seo_description: Schema.Attribute.Text;
     seo_title: Schema.Attribute.String;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
@@ -506,7 +515,6 @@ export interface ApiSiteSettingSiteSetting extends Struct.SingleTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     headerCtaPrimary: Schema.Attribute.Component<'shared.menu-item', false>;
-    headerCtaSecondary: Schema.Attribute.Component<'shared.menu-item', false>;
     headerMenu: Schema.Attribute.Component<'shared.header-menu', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<

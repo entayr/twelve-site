@@ -28,6 +28,16 @@
     },
     "seo_description": {
       "type": "text"
+    },
+    "sections": {
+      "type": "dynamiczone",
+      "components": [
+        "shared.sections-hero",
+        "shared.sections-rich-text",
+        "shared.sections-features",
+        "shared.sections-cta",
+        "shared.sections-map"
+      ]
     }
   }
 }

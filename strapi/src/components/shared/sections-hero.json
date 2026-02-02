@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_shared_sections_heroes",
+  "info": {
+    "displayName": "sections.hero"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "subtitle": {
+      "type": "blocks"
+    },
+    "primaryCtaLabel": {
+      "type": "string"
+    },
+    "primaryCtaType": {
+      "type": "enumeration",
+      "enum": [
+        "internal",
+        "external"
+      ]
+    },
+    "primaryCtaUrl": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

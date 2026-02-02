@@ -1,0 +1,48 @@
+import BlocksRenderer from "./BlocksRenderer";
+
+type HeroSectionData = {
+  __component?: string;
+  title?: string | null;
+  subtitle?: any[] | null;
+  primaryCtaLabel?: string | null;
+  primaryCtaType?: string | null;
+  primaryCtaUrl?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaType?: string | null;
+  secondaryCtaUrl?: string | null;
+};
+
+function isExternalUrl(url: string) {
+  return /^https?:\/\//i.test(url);
+}
+
+export default function HeroSection({
+  data,
+  compact = false,
+}: {
+  data: HeroSectionData;
+  compact?: boolean;
+}) {
+  if (!data) return null;
+
+  const title = data.title || "";
+  const subtitle = data.subtitle || [];
+
+  const padding = compact ? "pt-6 pb-8" : "pt-14 pb-12";
+
+  return (
+    <section className={`border-b border-white/10 ${padding}`}>
+      <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-10">
+        <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          {title}
+        </h1>
+
+        {Array.isArray(subtitle) && subtitle.length ? (
+          <div className="prose prose-invert mt-4 max-w-2xl text-zinc-200">
+            <BlocksRenderer blocks={subtitle as any} />
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}

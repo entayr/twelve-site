@@ -1,0 +1,75 @@
+type MapSectionData = {
+  __component?: string;
+  title?: string | null;
+
+  // вариант 1: как у тебя в Strapi сейчас
+  yandexMapUrl?: string | null;
+  height?: number | null;
+
+  // вариант 2: если где-то ещё осталось старое хранение
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  zoom?: number | null;
+};
+
+function toNum(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildYandexSrcFromCoords(lat: number, lng: number, zoom: number) {
+  const ll = `${lng},${lat}`;
+  const params = new URLSearchParams({
+    ll,
+    z: String(zoom),
+    pt: `${lng},${lat},pm2rdm`,
+  });
+  return `https://yandex.ru/map-widget/v1/?${params.toString()}`;
+}
+
+export default function MapSection({ data }: { data: MapSectionData }) {
+  if (!data) return null;
+
+  const title = data.title || "Как нас найти";
+
+  // 1) приоритет: готовый yandexMapUrl из Strapi
+  const url = (data.yandexMapUrl || "").trim();
+  const height = typeof data.height === "number" ? data.height : 420;
+
+  // 2) fallback: координаты
+  const lat = toNum(data.latitude);
+  const lng = toNum(data.longitude);
+  const zoom = typeof data.zoom === "number" ? data.zoom : 14;
+
+  const src = url
+    ? url
+    : lat !== null && lng !== null
+      ? buildYandexSrcFromCoords(lat, lng, zoom)
+      : "";
+
+  if (!src) return null;
+
+  return (
+    <section className="border-t border-white/10 bg-[#0b0b0c]">
+      <div className="w-full px-6 py-10">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
+          {title}
+        </h2>
+
+        <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <iframe
+            title="map"
+            src={src}
+            style={{ height }}
+            className="w-full"
+            frameBorder="0"
+            allowFullScreen
+          />
+        </div>
+
+        <div className="mt-2 text-xs text-zinc-500">Карта: Яндекс</div>
+      </div>
+    </section>
+  );
+}

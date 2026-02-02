@@ -20,11 +20,6 @@
       "type": "component",
       "component": "shared.menu-item",
       "repeatable": false
-    },
-    "headerCtaSecondary": {
-      "type": "component",
-      "component": "shared.menu-item",
-      "repeatable": false
     }
   }
 }

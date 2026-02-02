@@ -80,17 +80,17 @@ export default async function RootLayout({
   const global = await fetchGlobal();
   const siteSetting = await fetchSiteSetting();
 
-  const companyName = global?.company_name || 'ООО "ДВЕНАДЦАТЬ"';
+  const companyName = global?.company_name || "{companyName}";
   const email = global?.contacts_email || "mail@t-welve.ru";
   const phone = global?.contacts_phone || "+7 (911) 003-03-07";
   const address = global?.contacts_address || "Санкт-Петербург";
 
   // Fallback меню (если Strapi пустой или не заполнен)
-  const fallbackMenu = [
-    { label: "О компании", type: "internal", slug: "/about", isVisible: true, order: 10 },
-    { label: "Услуги", type: "internal", slug: "/services", isVisible: true, order: 20 },
-    { label: "Контакты", type: "internal", slug: "/contacts", isVisible: true, order: 30 },
-  ];
+const fallbackMenu = [
+  { label: "Как мы работаем", type: "internal", slug: "/#process", isVisible: true, order: 10 },
+  { label: "Когда мы полезны", type: "internal", slug: "/#useful", isVisible: true, order: 20 },
+  { label: "Контакты", type: "internal", slug: "/contacts", isVisible: true, order: 30 },
+];
 
   // Вытягиваем items из Strapi (учитывая, что headerMenu может быть массивом)
   const rawItems =
@@ -114,21 +114,10 @@ export default async function RootLayout({
     .filter((i: any) => !!i?.href);
 
   // CTA buttons in header (from Strapi; fallback if empty)
-  const fallbackCtaSecondary: any = { label: "Связаться", type: "internal", slug: "/contacts", isVisible: true };
-  const fallbackCtaPrimary: any = { label: "Запросить КП", type: "internal", slug: "/contacts", isVisible: true };
+  const fallbackCtaPrimary: any = { label: "Описать задачу", type: "internal", slug: "/contacts", isVisible: true };
 
-  const rawCtaSecondary: any = siteSetting?.headerCtaSecondary ?? null;
   const rawCtaPrimary: any = siteSetting?.headerCtaPrimary ?? null;
 
-  const ctaSecondary =
-    rawCtaSecondary?.isVisible === false
-      ? null
-      : (() => {
-          const src = rawCtaSecondary ?? fallbackCtaSecondary;
-          const href = normalizeHref(src);
-          if (!href) return null;
-          return { label: src?.label || "Связаться", href };
-        })();
 
   const ctaPrimary =
     rawCtaPrimary?.isVisible === false
@@ -137,7 +126,7 @@ export default async function RootLayout({
           const src = rawCtaPrimary ?? fallbackCtaPrimary;
           const href = normalizeHref(src);
           if (!href) return null;
-          return { label: src?.label || "Запросить КП", href };
+          return { label: src?.label || "Описать задачу", href };
         })();
 
 
@@ -145,101 +134,121 @@ export default async function RootLayout({
     <html lang="ru">
       <body className="min-h-screen">
         <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b0c]/80 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="flex h-16 items-center justify-between">
+          <div className="w-full px-6">
+            <div className="flex h-16 items-center">
               <Link href="/" className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5">
-                  <span className="text-sm font-semibold tracking-tight">12</span>
-                </div>
-                <div className="leading-tight">
-                  <div className="text-sm font-semibold">{companyName}</div>
-                  <div className="text-xs text-zinc-400">
-                    Поставки электрооборудования
-                  </div>
-                </div>
+<div className="grid h-14 w-14 place-items-center rounded-xl border border-white/10 bg-white/5">
+  <img
+    src="/logo-12.svg"
+    alt='ООО "Двенадцать"'
+    className="h-12 w-12 opacity-90"
+  />
+</div>
+            {/* бейдж */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-zinc-200">
+              <span className="h-2 w-2 rounded-full bg-blue-400" />
+              Системные поставки для промышленности
+            </div>
               </Link>
 
-              <nav className="hidden items-center gap-6 text-sm text-zinc-200 md:flex">
-                {navItems.map((item: any) => (
-                  <SmartLink
-                    key={`${item.href}-${item.label}`}
-                    className="hover:text-white/90" href={item.href}
-                    {...(item.type === "external"
-                      ? { target: "_blank", rel: "noreferrer" }
-                      : {})}
-                  >
-                    {item.label}
-                  </SmartLink>
-                ))}
-              </nav>
+<div className="ml-auto flex items-center gap-4">
+  {/* MENU */}
+  <div className="hidden md:flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2">
+    <nav className="flex items-center gap-5 text-sm text-white/80">
+      {navItems.map((item: any) => (
+        <SmartLink
+          key={`${item.href}-${item.label}`}
+          className="text-white/80 hover:text-white"
+          href={item.href}
+        >
+          {item.label}
+        </SmartLink>
+      ))}
+    </nav>
+  </div>
 
-              <div className="flex items-center gap-3">
-                {ctaSecondary && (
-                  <a
-                    href={ctaSecondary.href}
-                    className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/90 hover:border-white/25 hover:bg-white/5"
-                  >
-                    {ctaSecondary.label}
-                  </a>
-                )}
-                {ctaPrimary && (
-                  <a
-                    href={ctaPrimary.href}
-                    className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-400"
-                  >
-                    {ctaPrimary.label}
-                  </a>
-                )}
-              </div>
+  {/* CTA */}
+  {ctaPrimary && (
+    <a
+      href={ctaPrimary.href}
+      className="inline-flex rounded-xl border border-white/20 px-5 py-2.5 text-sm font-medium text-white/90 hover:border-white/30 hover:bg-white/5"
+    >
+      {ctaPrimary.label}
+    </a>
+  )}
+</div>
             </div>
           </div>
         </header>
 
         <main>{children}</main>
 
-        <footer className="border-t border-white/10 bg-[#0b0b0c]">
-          <div className="mx-auto max-w-6xl px-6 py-10">
-            <div className="grid gap-6 md:grid-cols-3">
-              <div>
-                <div className="text-sm font-semibold">{companyName}</div>
-                <div className="mt-2 text-sm text-zinc-400">
-                  Поставки промышленного электрооборудования. Подбор, документация,
-                  поставка.
-                </div>
-              </div>
+<footer className="border-t border-white/10 bg-[#0e0f12]">
+<div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+  <div className="w-full px-6">
+    <div className="mx-auto max-w-6xl py-12 md:py-14">
+      <div className="grid gap-10 md:grid-cols-4">
+        {/* О компании (кратко, без “ООО” в брендинге) */}
+        <div>
+          <div className="text-sm font-semibold text-white">{companyName}</div>
+         <div className="mt-2 max-w-xs text-[11px] leading-snug text-zinc-500 md:text-xs">
+  Технико-коммерческие решения для промышленных задач в электрооборудовании.
+</div>
+        </div>
 
-              <div className="text-sm text-zinc-300">
-                <div className="font-semibold text-white">Навигация</div>
-                <div className="mt-2 grid gap-2">
-                  {navItems.map((item: any) => (
-                    <SmartLink
-                      key={`footer-${item.href}-${item.label}`}
-                      className="text-zinc-400 hover:text-white" href={item.href}
-                      {...(item.type === "external"
-                        ? { target: "_blank", rel: "noreferrer" }
-                        : {})}
-                    >
-                      {item.label}
-                    </SmartLink>
-                  ))}
-                </div>
-              </div>
-
-              <div className="text-sm text-zinc-300">
-                <div className="font-semibold text-white">Контакты</div>
-                <div className="mt-2 grid gap-2 text-zinc-400">
-                  <div>{email}</div>
-                  <div>{phone}</div>
-                  <div>{address}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 text-xs text-zinc-500">
-              © {new Date().getFullYear()} {companyName}. Все права защищены.
-            </div>
+        {/* Навигация (новая структура) */}
+        <div className="text-sm text-zinc-300">
+          <div className="font-semibold text-white">Навигация</div>
+          <div className="mt-3 grid gap-2">
+            {navItems.map((item: any) => (
+              <SmartLink
+                key={`footer-${item.href}-${item.label}`}
+                className="text-zinc-400 hover:text-white"
+                href={item.href}
+                {...(item.type === "external"
+                  ? { target: "_blank", rel: "noreferrer" }
+                  : {})}
+              >
+                {item.label}
+              </SmartLink>
+            ))}
           </div>
-        </footer>
+        </div>
+
+        {/* Документы (юридические ссылки) */}
+        <div className="text-sm text-zinc-300">
+          <div className="font-semibold text-white">Документы</div>
+          <div className="mt-3 grid gap-2">
+            <SmartLink className="text-zinc-400 hover:text-white" href="/privacy">
+              Политика обработки персональных данных
+            </SmartLink>
+            <SmartLink className="text-zinc-400 hover:text-white" href="/legal">
+              Юридическая информация
+            </SmartLink>
+          </div>
+        </div>
+
+        {/* Контакты */}
+        <div className="text-sm text-zinc-300">
+          <div className="font-semibold text-white">Контакты</div>
+          <div className="mt-3 grid gap-2 text-zinc-400">
+            <div>{email}</div>
+            <div>{phone}</div>
+            <div>{address}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* нижняя строка */}
+      <div className="mt-10 flex flex-col gap-2 border-t border-white/15 pt-6 text-xs text-zinc-500 md:flex-row md:items-center md:justify-between">
+        <div>
+          © {new Date().getFullYear()} {companyName}. Все права защищены.
+        </div>
+        <div>ИНН 7811813433 | ОГРН 1267800001590</div>
+      </div>
+    </div>
+  </div>
+</footer>
       </body>
     </html>
   );

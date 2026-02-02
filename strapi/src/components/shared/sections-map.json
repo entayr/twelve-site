@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_sections_map",
+  "info": {
+    "displayName": "sections.map"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "yandexMapUrl": { "type": "text" },
+    "height": { "type": "integer", "default": 420 }
+  }
+}

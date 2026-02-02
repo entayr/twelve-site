@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_shared_sections_ctas",
+  "info": {
+    "displayName": "sections.cta"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "ctaLabel": {
+      "type": "string"
+    },
+    "ctaType": {
+      "type": "enumeration",
+      "enum": [
+        "internal",
+        "external"
+      ]
+    },
+    "ctaUrl": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_shared_sections_maps",
+  "info": {
+    "displayName": "Sections.map",
+    "description": "Map section (Yandex map)"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "decimal"
+    },
+    "longitude": {
+      "type": "decimal"
+    },
+    "zoom": {
+      "type": "integer",
+      "default": 14
+    }
+  }
+}

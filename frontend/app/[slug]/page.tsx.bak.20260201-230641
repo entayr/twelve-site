@@ -1,0 +1,164 @@
+import BlocksRenderer from "../components/BlocksRenderer";
+import { notFound } from "next/navigation";
+import HeroSection from "../components/HeroSection";
+import CtaSection from "../components/CtaSection";
+import MapSection from "../components/MapSection";
+import FeaturesSection from "../components/FeaturesSection";
+import RichTextSection from "../components/RichTextSection";
+import ContactForm from "../components/ContactForm";
+import ContactFormSection from "../components/ContactFormSection";
+import { fetchGlobal, fetchPageBySlug } from "../lib/strapi";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const [global, page] = await Promise.all([fetchGlobal(), fetchPageBySlug(slug)]);
+
+  const companyName = global?.company_name || 'ООО "ДВЕНАДЦАТЬ"';
+
+  if (!page) {
+    return {
+      title: `${companyName}`,
+      description: "Поставки промышленного и взрывозащищённого электрооборудования для предприятий",
+    };
+  }
+
+  const title = page.seo_title || page.title || companyName;
+  const description =
+    page.seo_description ||
+    "Поставки промышленного и взрывозащищённого электрооборудования для предприятий";
+
+  return { title, description };
+}
+
+function renderSection(section: any) {
+  const key = `${section?.__component || 'section'}-${section?.id || Math.random()}`;
+  const c = section?.__component;
+  if (typeof c !== 'string') return null;
+
+  if (c.includes('sections-hero')) return <HeroSection key={key} data={section} />;
+  if (c.includes('sections-rich-text')) return <RichTextSection key={key} data={section} />;
+  if (c.includes('sections-features')) return <FeaturesSection key={key} data={section} />;
+  if (c.includes('sections-cta')) return <CtaSection key={key} data={section} />;
+  return null;
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const page = await fetchPageBySlug(slug);
+
+   const sections = Array.isArray((page as any)?.sections) ? (page as any).sections : [];
+
+  if (slug === "contacts") {
+    const hero = sections.find((s: any) => s?.__component === "shared.sections-hero") || null;
+    const rich = sections.find((s: any) => s?.__component === "shared.sections-rich-text") || null;
+    const map = sections.find((s: any) => s?.__component === "shared.sections-map") || null;
+
+    return (
+      <main className="w-full px-6 py-12">
+        {hero ? <HeroSection data={hero} /> : null}
+
+        <section className="mt-10">
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+            {/* ЛЕВО: контакты + карта */}
+            <div className="space-y-8">
+              {rich ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <div className="prose prose-invert max-w-none text-zinc-200">
+                    <BlocksRenderer blocks={rich.body || []} />
+                  </div>
+                </div>
+              ) : null}
+
+              {map ? <MapSection data={map} /> : null}
+            </div>
+
+            {/* ПРАВО: форма */}
+            <div className="lg:sticky lg:top-6 h-fit">
+              <ContactFormSection />
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  } 
+
+  if (!page) notFound();
+
+  // СПЕЦ-РАЗМЕТКА ДЛЯ CONTACTS
+  if ((page as any)?.slug === "contacts") {
+    const sections = Array.isArray((page as any)?.sections) ? (page as any).sections : [];
+
+    const hero = sections.find((s: any) => s?.__component === "shared.sections-hero") || null;
+    const rich = sections.find((s: any) => s?.__component === "shared.sections-rich-text") || null;
+    const map = sections.find((s: any) => s?.__component === "shared.sections-map") || null;
+
+    return (
+      <main className="bg-[#0b0b0c]">
+        {hero ? <HeroSection data={hero} /> : null}
+
+        <section className="w-full px-6 py-12">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h3 className="text-lg font-semibold text-white">Контакты</h3>
+              <div className="prose prose-invert mt-4 max-w-none text-white/80">
+                {rich ? <BlocksRenderer blocks={rich.body || []} /> : null}
+              </div>
+            </div>
+
+            <ContactForm />
+          </div>
+        </section>
+
+        {map ? <MapSection data={map} /> : null}
+      </main>
+    );
+  }
+
+  const sections: any[] = Array.isArray((page as any)?.sections) ? (page as any).sections : [];
+
+  return (
+    <main className="w-full px-6 py-12">
+      {sections.map((sec: any, idx: number) => {
+        const key = `${sec?.__component || "section"}-${sec?.id || idx}`;
+
+        switch (sec?.__component) {
+          case "shared.sections-hero":
+            return <HeroSection key={key} data={sec} />;
+
+          case "shared.sections-rich-text":
+            return <RichTextSection key={key} data={sec} />;
+
+          case "shared.sections-features":
+            return <FeaturesSection key={key} data={sec} />;
+
+          case "shared.sections-cta":
+            return <CtaSection key={key} data={sec} />;
+
+          case "shared.sections-map":
+            return <MapSection key={key} data={sec} />;
+
+          default:
+            return null;
+        }
+      })}
+
+      {/* Фолбэк: если sections пустые, покажем старый контент страницы */}
+      {sections.length === 0 ? (
+        <>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">{page.title}</h1>
+          <div className="prose prose-invert mt-6 max-w-none">
+            <BlocksRenderer blocks={(page as any).content || []} />
+          </div>
+        </>
+      ) : null}
+    </main>
+  );
+}
