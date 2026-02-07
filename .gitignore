@@ -37,3 +37,6 @@ strapi/**/*.sqlite-journal
 
 # backups
 *.bak
+
+# big local images
+*.tar.gz
