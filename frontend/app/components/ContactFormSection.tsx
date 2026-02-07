@@ -1,141 +1,384 @@
+// /Users/entayr/twelve-local/frontend/app/components/ContactFormSection.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, options: any) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId: string) => void;
+      execute: (widgetId?: string) => void;
+    };
+  }
+}
+
+type Status = "idle" | "sending" | "sent" | "error";
 
 export default function ContactFormSection() {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [subject, setSubject] = useState("");
+  const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState<null | boolean>(null);
+  const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string>("");
+
+  // Turnstile (render only on submit)
+  const [tsMounted, setTsMounted] = useState(false); // контролирует "пустой блок": он будет появляться только при submit
+  const [tsToken, setTsToken] = useState<string>("");
+
+  const widgetIdRef = useRef<string | null>(null);
+  const turnstileElRef = useRef<HTMLDivElement | null>(null);
+  const scriptLoadingRef = useRef<Promise<void> | null>(null);
+
+  const tokenPromiseRef = useRef<{
+    resolve: (t: string) => void;
+    reject: (e: Error) => void;
+  } | null>(null);
+
+  const canSubmit = useMemo(() => {
+    if (!name.trim() || !message.trim()) return false;
+    // если siteKey не задан — не блокируем локальную обкатку
+    if (!siteKey) return true;
+    // для invisible мы будем получать токен на submit — поэтому не блокируем до submit
+    return true;
+  }, [name, message, siteKey]);
+
+  // Auto-hide "sent" after 4s
+  useEffect(() => {
+    if (status !== "sent") return;
+    const t = setTimeout(() => setStatus("idle"), 4000);
+    return () => clearTimeout(t);
+  }, [status]);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (widgetIdRef.current && window.turnstile?.remove) {
+          window.turnstile.remove(widgetIdRef.current);
+        }
+      } catch {}
+      widgetIdRef.current = null;
+      tokenPromiseRef.current = null;
+    };
+  }, []);
+
+  function ensureTurnstileScript(): Promise<void> {
+    if (!siteKey) return Promise.resolve();
+
+    if (scriptLoadingRef.current) return scriptLoadingRef.current;
+
+    const scriptId = "cf-turnstile-script";
+    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    scriptLoadingRef.current = new Promise<void>((resolve, reject) => {
+      if (existing) return resolve();
+
+      const s = document.createElement("script");
+      s.id = scriptId;
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      s.async = true;
+      s.defer = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Turnstile script load failed"));
+      document.head.appendChild(s);
+    });
+
+    return scriptLoadingRef.current;
+  }
+
+  async function waitTurnstileReady() {
+    // ждём появления window.turnstile
+    let tries = 0;
+    while (!window.turnstile && tries < 200) {
+      await new Promise((r) => setTimeout(r, 50));
+      tries++;
+    }
+    if (!window.turnstile) throw new Error("Turnstile not available");
+  }
+
+  async function renderTurnstileIfNeeded() {
+    if (!siteKey) return;
+
+    // IMPORTANT: монтируем DOM-контейнер только на submit
+    if (!tsMounted) {
+      setTsMounted(true);
+      // даём React смонтировать div ref={turnstileElRef}
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    await ensureTurnstileScript();
+    await waitTurnstileReady();
+
+    if (widgetIdRef.current) return;
+
+    const el = turnstileElRef.current;
+    if (!el) throw new Error("Turnstile element missing");
+
+    // на всякий случай очищаем
+    el.innerHTML = "";
+
+    const id = window.turnstile!.render(el, {
+      sitekey: siteKey,
+      size: "invisible",
+      theme: "dark",
+      language: "ru",
+
+      callback: (token: string) => {
+        if (tokenPromiseRef.current) {
+          tokenPromiseRef.current.resolve(token);
+          tokenPromiseRef.current = null;
+        }
+        setTsToken(token);
+      },
+
+      "expired-callback": () => {
+        setTsToken("");
+      },
+
+      "error-callback": () => {
+        if (tokenPromiseRef.current) {
+          tokenPromiseRef.current.reject(new Error("Turnstile error"));
+          tokenPromiseRef.current = null;
+        }
+        setTsToken("");
+      },
+    });
+
+    widgetIdRef.current = id;
+  }
+
+  async function getTurnstileToken(): Promise<string> {
+    if (!siteKey) return "";
+
+    await renderTurnstileIfNeeded();
+
+    // сброс состояния перед новым execute
+    setTsToken("");
+
+    return await new Promise<string>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        tokenPromiseRef.current = null;
+        reject(new Error("Turnstile timeout"));
+      }, 20000);
+
+      tokenPromiseRef.current = {
+        resolve: (t: string) => {
+          clearTimeout(timeout);
+          resolve(t);
+        },
+        reject: (e: Error) => {
+          clearTimeout(timeout);
+          reject(e);
+        },
+      };
+
+      try {
+        window.turnstile!.execute(widgetIdRef.current || undefined);
+      } catch {
+        clearTimeout(timeout);
+        tokenPromiseRef.current = null;
+        reject(new Error("Turnstile execute failed"));
+      }
+    });
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setOk(null);
+    if (status === "sending") return;
+
+    setStatus("sending");
     setError("");
 
     try {
+      const token = siteKey ? await getTurnstileToken() : "";
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, subject, message }),
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          topic,
+          message,
+          turnstileToken: siteKey ? token : undefined,
+        }),
       });
 
       const json = await res.json().catch(() => null);
 
       if (!res.ok || !json?.ok) {
-        setOk(false);
+        setStatus("error");
         setError(json?.error || "Не удалось отправить сообщение");
+
+        // если ошибка — на всякий случай сбрасываем токен/виджет
+        setTsToken("");
+        try {
+          if (siteKey && window.turnstile?.reset) {
+            if (widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
+            else window.turnstile.reset();
+          }
+        } catch {}
+
         return;
       }
 
-      setOk(true);
+      setStatus("sent");
       setName("");
       setEmail("");
       setPhone("");
-      setSubject("");
+      setTopic("");
       setMessage("");
-    } catch {
-      setOk(false);
-      setError("Не удалось отправить сообщение");
-    } finally {
-      setLoading(false);
+
+      // reset captcha after success
+      setTsToken("");
+      try {
+        if (siteKey && window.turnstile?.reset) {
+          if (widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
+          else window.turnstile.reset();
+        }
+      } catch {}
+    } catch (err: any) {
+      const msg =
+        err?.message === "Turnstile timeout"
+          ? "Turnstile timeout"
+          : err?.message || "Сеть/сервер недоступны";
+
+      setStatus("error");
+      setError(msg);
+
+      setTsToken("");
+      try {
+        if (siteKey && window.turnstile?.reset) {
+          if (widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
+          else window.turnstile.reset();
+        }
+      } catch {}
     }
   }
 
+  const inlineStatus = (() => {
+    if (status === "sent") return { text: "Сообщение отправлено.", cls: "text-emerald-300" };
+    if (status === "error") return { text: error || "Не удалось отправить.", cls: "text-red-300" };
+    if (status === "sending") return { text: "Отправляем…", cls: "text-zinc-300" };
+    return null;
+  })();
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-      <h3 className="text-xl font-semibold tracking-tight text-white">Написать нам</h3>
-      <p className="mt-1 text-sm text-zinc-300">
+      <h3 className="text-2xl font-semibold tracking-tight text-white">Связаться с нами</h3>
+      <p className="mt-2 text-base text-zinc-300">
         Ответим в рабочее время. Срочно — лучше звоните.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form onSubmit={onSubmit} className="mt-6 space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm text-zinc-300">
-            Имя *
+          <div>
+            <label className="text-sm text-zinc-200">Имя *</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-white placeholder:text-zinc-500 outline-none focus:border-white/20"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white placeholder:text-zinc-500 outline-none focus:border-white/25"
               placeholder="Иван"
             />
-          </label>
+          </div>
 
-          <label className="text-sm text-zinc-300">
-            Email *
+          <div>
+            <label className="text-sm text-zinc-200">Email</label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               type="email"
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-white placeholder:text-zinc-500 outline-none focus:border-white/20"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white placeholder:text-zinc-500 outline-none focus:border-white/25"
               placeholder="ivan@mail.ru"
             />
-          </label>
+          </div>
 
-          <label className="text-sm text-zinc-300">
-            Телефон
+          <div>
+            <label className="text-sm text-zinc-200">Телефон</label>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-white placeholder:text-zinc-500 outline-none focus:border-white/20"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white placeholder:text-zinc-500 outline-none focus:border-white/25"
               placeholder="+7…"
             />
-          </label>
+          </div>
 
-          <label className="text-sm text-zinc-300">
-            Тема
+          <div>
+            <label className="text-sm text-zinc-200">Тема</label>
             <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-white placeholder:text-zinc-500 outline-none focus:border-white/20"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white placeholder:text-zinc-500 outline-none focus:border-white/25"
               placeholder="Подбор оборудования"
             />
-          </label>
+          </div>
         </div>
 
-        <label className="text-sm text-zinc-300">
-          Сообщение *
+        <div>
+          <label className="text-sm text-zinc-200">Сообщение *</label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             required
-            rows={5}
-            className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-white placeholder:text-zinc-500 outline-none focus:border-white/20"
+            rows={7}
+            className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white placeholder:text-zinc-500 outline-none focus:border-white/25"
             placeholder="Опишите задачу: что нужно, количества, сроки, город…"
           />
-        </label>
+        </div>
 
-        {ok === false ? (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {error || "Не удалось отправить сообщение"}
+        {/* ВАРИАНТ B: капча появляется только при submit (invisible), ниже — тексты + кнопка */}
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+          {/* Turnstile контейнер (пустой UI до submit) */}
+          {siteKey && tsMounted ? (
+            <div className="inline-flex items-center">
+              {/* В invisible режиме тут ничего не должно "торчать" */}
+              <div ref={turnstileElRef} className="turnstile-inline" />
+            </div>
+          ) : null}
+
+          {/* нижняя линия */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-xs leading-relaxed text-zinc-500">
+              Нажимая “Отправить”, вы соглашаетесь на обработку персональных данных.{" "}
+              <Link
+                href="/privacy"
+                className="text-zinc-300 underline underline-offset-4 hover:text-white"
+              >
+                Политика
+              </Link>
+              .
+              {inlineStatus ? (
+                <span className={`ml-2 ${inlineStatus.cls}`}>{inlineStatus.text}</span>
+              ) : null}
+            </div>
+
+            <button
+              type="submit"
+              disabled={!canSubmit || status === "sending"}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-500
+                         px-7 py-3 text-sm font-semibold text-white hover:bg-blue-400
+                         disabled:opacity-60 md:shrink-0"
+            >
+              {status === "sending" ? (
+                <>
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  Отправляем…
+                </>
+              ) : (
+                "Отправить"
+              )}
+            </button>
           </div>
-        ) : null}
-
-        {ok === true ? (
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            Сообщение отправлено.
-          </div>
-        ) : null}
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs text-zinc-500">
-            Нажимая “Отправить”, вы соглашаетесь на обработку данных
-          </div>
-
-          <button
-            disabled={loading}
-            className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-400 disabled:opacity-60"
-          >
-            {loading ? "Отправка…" : "Отправить"}
-          </button>
         </div>
       </form>
     </div>

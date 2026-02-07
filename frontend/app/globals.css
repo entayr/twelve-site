@@ -55,3 +55,61 @@ a{
 ::selection{
   background: rgba(59,130,246,0.35);
 }
+/* ================================
+   Cloudflare Turnstile — compact inline
+   ================================ */
+
+.turnstile-row {
+  display: flex;
+  align-items: center;
+}
+
+.turnstile-box {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* Cloudflare рендерит iframe фиксированной высоты — лечим */
+.turnstile-box iframe {
+  zoom: 0.78; /* Chrome-safe */
+}
+
+/* на мобильных ещё компактнее */
+@media (max-width: 640px) {
+  .turnstile-box iframe {
+    zoom: 0.72;
+  }
+}
+
+/* Cloudflare Turnstile — keep one-line (no square) */
+
+.turnstile-row {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+}
+
+.turnstile-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.turnstile-box {
+  display: inline-block;
+  overflow: hidden;
+  line-height: 0;
+  min-width: 320px;     /* ключ: не даём переломиться в "квадрат" */
+}
+
+/* ВАЖНО: отключаем scale, он часто провоцирует stacked-рендер */
+.turnstile-box > div {
+  transform: none !important;
+  transform-origin: left center;
+}
+
+.turnstile-box iframe {
+  display: block;
+}
