@@ -124,38 +124,44 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1) Turnstile verify (если секрет задан — считаем капчу обязательной)
-    if (env.turnstileSecret) {
-      if (!turnstileToken) {
-        return Response.json(
-          { ok: false, error: "Подтвердите, что вы не робот" },
-          { status: 400 }
-        );
-      }
+// 1) Turnstile verify
+const bypass =
+  process.env.NODE_ENV !== "production" &&
+  String(process.env.CONTACT_TURNSTILE_BYPASS || "false") === "true";
 
-      const remoteip = getClientIp(req);
-      const v0 = Date.now();
-      const v = await verifyTurnstile({
-        secret: env.turnstileSecret,
-        token: turnstileToken,
-        remoteip,
-      });
+if (env.turnstileSecret && !bypass) {
+  if (!turnstileToken) {
+    return Response.json(
+      { ok: false, error: "Подтвердите, что вы не робот" },
+      { status: 400 }
+    );
+  }
 
-      console.log("[contact]", now(), "TURNSTILE_VERIFY", {
-        ms: Date.now() - v0,
-        ok: v.ok,
-        httpOk: v.httpOk,
-        hostname: v.raw?.hostname,
-        errors: v.raw?.["error-codes"] || [],
-      });
+  const remoteip = getClientIp(req);
+  const v0 = Date.now();
+  const v = await verifyTurnstile({
+    secret: env.turnstileSecret,
+    token: turnstileToken,
+    remoteip,
+  });
 
-      if (!v.ok) {
-        return Response.json(
-          { ok: false, error: "Капча не пройдена. Обновите страницу и попробуйте снова." },
-          { status: 400 }
-        );
-      }
-    }
+  console.log("[contact]", now(), "TURNSTILE_VERIFY", {
+    ms: Date.now() - v0,
+    ok: v.ok,
+    httpOk: v.httpOk,
+    hostname: v.raw?.hostname,
+    errors: v.raw?.["error-codes"] || [],
+  });
+
+  if (!v.ok) {
+    return Response.json(
+      { ok: false, error: "Капча не пройдена. Обновите страницу и попробуйте снова." },
+      { status: 400 }
+    );
+  }
+} else if (env.turnstileSecret && bypass) {
+  console.log("[contact]", now(), "TURNSTILE_BYPASS", { nodeEnv: process.env.NODE_ENV });
+}
 
     // 2) SMTP send
     const transporter = nodemailer.createTransport({
